@@ -15,10 +15,26 @@ def add_task(task, task_list):
     task_list.insert(tk.END, task.get())
 
 
-def delete_task(frame, task_list):
+def delete_task(frame, task_list, title, data_dir):
+    todo_title = title.get(1.0, tk.END).strip()
+
     try:
         selected_index = task_list.curselection()[0]
         task_list.delete(selected_index)
+        todo_task_list = task_list.get(0, tk.END)
+
+        if os.path.exists(f"{data_dir}\\{todo_title}.xlsx"):
+            todo_excel = openpyxl.load_workbook(f"{data_dir}\\{todo_title}.xlsx")
+            sheet = todo_excel[todo_title]
+
+            for row_index, row in enumerate(sheet.iter_rows(values_only=True)):
+                try:
+                    todo_task_list.index(row[0])
+                except ValueError:
+                    sheet.delete_rows(row_index+1)
+
+            todo_excel.save(f"{data_dir}\\{todo_title}.xlsx")
+
     except IndexError:
         popup = tk.Toplevel(frame)
         popup.title("No Task Selected")
@@ -48,13 +64,19 @@ def save_todo(data_dir, title, task_list):
         todo_excel = openpyxl.load_workbook(f"{data_dir}\\{todo_title}.xlsx")
         sheet = todo_excel[todo_title]
 
+        sheet_rows = [rows[0] for rows in sheet.iter_rows(values_only=True)]
+
         for task in todo_task_list:
-            sheet.append([task])
+            try:
+                sheet_rows.index(task)
+            except ValueError:
+                sheet.append([task])
 
-        task_list.delete(0, tk.END)
-
-        for row in sheet.iter_rows(values_only=True):
-            task_list.insert(tk.END, row[0])
+        for row_index, row in enumerate(sheet.iter_rows(values_only=True)):
+            try:
+                todo_task_list.index(row[0])
+            except ValueError:
+                task_list.insert(tk.END, row[0])
 
     todo_excel.save(f"{data_dir}\\{todo_title}.xlsx")
 
@@ -117,7 +139,7 @@ def create_new_todo(todo_title="", task_list=None):
     delete_task_button = tk.Button(frame,
                                    text="Delete Task",
                                    font=("Comic Sans MS", 10),
-                                   command=lambda: [delete_task(frame, todo_list)])
+                                   command=lambda: [delete_task(frame, todo_list, todo_title_text, journal_data_today_dir)])
     delete_task_button.grid(row=5, column=2, sticky="w")
 
     save_button = tk.Button(frame,
